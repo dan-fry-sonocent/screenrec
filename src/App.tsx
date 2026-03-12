@@ -13,14 +13,17 @@ export default function App() {
 
   // ── Source settings ──────────────────────────────────────────────────────
   const [captureScreen,   setCaptureScreen]   = useState(true);
-  const [captureSysAudio, setCaptureSysAudio] = useState(false);
+  const [captureSysAudio, setCaptureSysAudio] = useState(true);
   const [captureCamera,   setCaptureCamera]   = useState(false);
   const [captureMic,      setCaptureMic]      = useState(false);
   const [cameraDeviceId,  setCameraDeviceId]  = useState('');
   const [micDeviceId,     setMicDeviceId]     = useState('');
 
   // ── Quality settings ─────────────────────────────────────────────────────
-  const [codecIndex,    setCodecIndex]    = useState(0);
+  const [codecIndex,    setCodecIndex]    = useState(() => {
+    const idx = getSupportedCodecs().findIndex(c => c.mime.includes('avc1'));
+    return idx >= 0 ? idx : 0;
+  });
   const [resolution,    setResolution]    = useState('1920x1080');
   const [fps,           setFps]           = useState(30);
   const [videoBitrate,  setVideoBitrate]  = useState(10);     // Mbps
