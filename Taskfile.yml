@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  serve:
+    desc: Start a local web server for ScreenRec
+    cmds:
+      - python3 -m http.server 8080 --directory public
