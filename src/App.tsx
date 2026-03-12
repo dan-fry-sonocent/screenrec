@@ -1,15 +1,15 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { getSupportedCodecs } from './utils/codecs.js';
-import { useDevices }         from './hooks/useDevices.js';
-import { useOPFS }            from './hooks/useOPFS.js';
-import { useRecorder }        from './hooks/useRecorder.js';
-import { Header }             from './components/Header.jsx';
-import { ControlPanel }       from './components/ControlPanel.jsx';
-import { PreviewPane }        from './components/PreviewPane.jsx';
+import { getSupportedCodecs } from './utils/codecs';
+import { useDevices }         from './hooks/useDevices';
+import { useOPFS }            from './hooks/useOPFS';
+import { useRecorder }        from './hooks/useRecorder';
+import { Header }             from './components/Header';
+import { ControlPanel }       from './components/ControlPanel';
+import { PreviewPane }        from './components/PreviewPane';
 
 export default function App() {
-  const videoRef       = useRef(null);
-  const playbackUrlRef = useRef(null);
+  const videoRef       = useRef<HTMLVideoElement | null>(null);
+  const playbackUrlRef = useRef<string | null>(null);
 
   // ── Source settings ──────────────────────────────────────────────────────
   const [captureScreen,   setCaptureScreen]   = useState(true);
@@ -27,7 +27,7 @@ export default function App() {
   const [audioBitrate,  setAudioBitrate]  = useState(192000); // bps
 
   // ── Playback state ───────────────────────────────────────────────────────
-  const [playbackSrc, setPlaybackSrc] = useState(null);
+  const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
 
   // ── Hooks ────────────────────────────────────────────────────────────────
   const supportedCodecs = useMemo(() => getSupportedCodecs(), []);
@@ -77,8 +77,8 @@ export default function App() {
   }, [playbackSrc, liveStream]);
 
   // ── Build video constraints from quality settings ────────────────────────
-  function buildVideoConstraints() {
-    const c = { frameRate: fps };
+  function buildVideoConstraints(): MediaTrackConstraints {
+    const c: MediaTrackConstraints = { frameRate: fps };
     if (resolution !== 'source') {
       const [w, h] = resolution.split('x').map(Number);
       c.width  = { ideal: w };
@@ -111,7 +111,7 @@ export default function App() {
     resolution, fps, supportedCodecs, codecIndex, videoBitrate, audioBitrate,
   ]);
 
-  const handlePlay = useCallback(async (handle) => {
+  const handlePlay = useCallback(async (handle: FileSystemFileHandle) => {
     if (playbackUrlRef.current) URL.revokeObjectURL(playbackUrlRef.current);
     const file = await handle.getFile();
     const url  = URL.createObjectURL(file);
@@ -119,7 +119,7 @@ export default function App() {
     setPlaybackSrc(url);
   }, []);
 
-  const handleDownload = useCallback(async (handle, name) => {
+  const handleDownload = useCallback(async (handle: FileSystemFileHandle, name: string) => {
     const file = await handle.getFile();
     const url  = URL.createObjectURL(file);
     const a    = document.createElement('a');
@@ -127,13 +127,13 @@ export default function App() {
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }, []);
 
-  const handleDelete = useCallback(async (name) => {
+  const handleDelete = useCallback(async (name: string) => {
     if (!opfsRoot) return;
     try {
       await opfsRoot.removeEntry(name);
       await refreshRecordings();
     } catch (e) {
-      alert('Could not delete: ' + e.message);
+      alert('Could not delete: ' + (e as Error).message);
     }
   }, [opfsRoot, refreshRecordings]);
 

@@ -1,34 +1,64 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { RecState, CodecOption } from '../types';
 
-export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
-  const [recState,     setRecState]     = useState('idle');
-  const [liveStream,   setLiveStream]   = useState(null);
+interface StartSettings {
+  captureScreen: boolean;
+  captureSysAudio: boolean;
+  captureCamera: boolean;
+  captureMic: boolean;
+  cameraDeviceId: string;
+  micDeviceId: string;
+  videoConstraints: MediaTrackConstraints;
+  selectedCodec: CodecOption | undefined;
+  videoBps: number;
+  audioBps: number;
+}
+
+interface UseRecorderOptions {
+  opfsRoot: FileSystemDirectoryHandle | null;
+  opfsAvailable: boolean;
+  onSaved?: () => void;
+}
+
+export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOptions): {
+  recState: RecState;
+  liveStream: MediaStream | null;
+  elapsed: number;
+  bytesWritten: number;
+  currentRes: string | null;
+  currentCodec: string | null;
+  start: (s: StartSettings) => Promise<void>;
+  stop: () => void;
+  pause: () => void;
+} {
+  const [recState,     setRecState]     = useState<RecState>('idle');
+  const [liveStream,   setLiveStream]   = useState<MediaStream | null>(null);
   const [elapsed,      setElapsed]      = useState(0);
   const [bytesWritten, setBytesWritten] = useState(0);
-  const [currentRes,   setCurrentRes]   = useState(null);
-  const [currentCodec, setCurrentCodec] = useState(null);
+  const [currentRes,   setCurrentRes]   = useState<string | null>(null);
+  const [currentCodec, setCurrentCodec] = useState<string | null>(null);
 
   // Keep the latest prop values accessible inside async callbacks without
   // stale closures.
-  const propsRef = useRef({ opfsRoot, opfsAvailable, onSaved });
+  const propsRef = useRef<{ opfsRoot: FileSystemDirectoryHandle | null; opfsAvailable: boolean; onSaved?: () => void }>({ opfsRoot, opfsAvailable, onSaved });
   useEffect(() => { propsRef.current = { opfsRoot, opfsAvailable, onSaved }; });
 
   // Media / recording refs — mutable, never cause re-renders.
-  const mediaRecorderRef  = useRef(null);
-  const screenStreamRef   = useRef(null);
-  const cameraStreamRef   = useRef(null);
-  const micStreamRef      = useRef(null);
-  const combinedStreamRef = useRef(null);
-  const audioCtxRef       = useRef(null);
-  const opfsWritableRef   = useRef(null);
-  const writeQueueRef     = useRef(Promise.resolve());
-  const fallbackChunksRef = useRef([]);
-  const recordingNameRef  = useRef('');
+  const mediaRecorderRef  = useRef<MediaRecorder | null>(null);
+  const screenStreamRef   = useRef<MediaStream | null>(null);
+  const cameraStreamRef   = useRef<MediaStream | null>(null);
+  const micStreamRef      = useRef<MediaStream | null>(null);
+  const combinedStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef       = useRef<AudioContext | null>(null);
+  const opfsWritableRef   = useRef<FileSystemWritableFileStream | null>(null);
+  const writeQueueRef     = useRef<Promise<void>>(Promise.resolve());
+  const fallbackChunksRef = useRef<Blob[]>([]);
+  const recordingNameRef  = useRef<string>('');
 
   // Timer refs.
-  const startTimeRef  = useRef(0);
-  const pausedMsRef   = useRef(0);
-  const pauseStartRef = useRef(0);
+  const startTimeRef  = useRef<number>(0);
+  const pausedMsRef   = useRef<number>(0);
+  const pauseStartRef = useRef<number>(0);
 
   // ── Timer interval ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -79,7 +109,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
   }, []);
 
   // ── start ────────────────────────────────────────────────────────────────
-  const start = useCallback(async (settings) => {
+  const start = useCallback(async (settings: StartSettings) => {
     const { opfsRoot, opfsAvailable, onSaved } = propsRef.current;
     const {
       captureScreen, captureSysAudio, captureCamera, captureMic,
@@ -92,8 +122,8 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
     setElapsed(0);
 
     try {
-      const tracks = [];
-      const audioSources = [];
+      const tracks: MediaStreamTrack[] = [];
+      const audioSources: MediaStream[] = [];
 
       if (captureScreen) {
         const ss = await navigator.mediaDevices.getDisplayMedia({
@@ -137,7 +167,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
       }
 
       // Mix multiple audio sources if necessary.
-      let audioTrack = null;
+      let audioTrack: MediaStreamTrack | null = null;
       if (audioSources.length > 1) {
         const ctx = new AudioContext();
         audioCtxRef.current = ctx;
@@ -176,7 +206,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
       }
 
       // Build and start the MediaRecorder.
-      const recOpts = { videoBitsPerSecond: videoBps, audioBitsPerSecond: audioBps };
+      const recOpts: MediaRecorderOptions = { videoBitsPerSecond: videoBps, audioBitsPerSecond: audioBps };
       if (mime) recOpts.mimeType = mime;
 
       const mr = new MediaRecorder(combined, recOpts);
@@ -186,8 +216,9 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
         if (!e.data?.size) return;
         setBytesWritten(b => b + e.data.size);
         if (opfsAvailable && opfsWritableRef.current) {
+          const writable = opfsWritableRef.current;
           writeQueueRef.current = writeQueueRef.current.then(
-            () => opfsWritableRef.current.write(e.data)
+            () => writable.write(e.data)
           );
         } else {
           fallbackChunksRef.current.push(e.data);
@@ -215,7 +246,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
           }
           propsRef.current.onSaved?.();
         } catch (err) {
-          alert('Error saving recording: ' + err.message);
+          alert('Error saving recording: ' + (err as Error).message);
         } finally {
           cleanup();
           setRecState('idle');
@@ -236,7 +267,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }) {
 
     } catch (err) {
       console.error('startRecording:', err);
-      alert('Could not start recording:\n' + err.message);
+      alert('Could not start recording:\n' + (err as Error).message);
       cleanup();
       setRecState('idle');
     }

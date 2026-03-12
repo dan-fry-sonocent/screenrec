@@ -1,4 +1,6 @@
-export const CODECS = [
+import { CodecOption } from '../types';
+
+export const CODECS: CodecOption[] = [
   { label: 'VP9 + Opus (WebM)',  mime: 'video/webm;codecs=vp9,opus',      ext: 'webm' },
   { label: 'VP8 + Opus (WebM)',  mime: 'video/webm;codecs=vp8,opus',      ext: 'webm' },
   { label: 'AV1 + Opus (WebM)',  mime: 'video/webm;codecs=av01,opus',     ext: 'webm' },
@@ -7,7 +9,7 @@ export const CODECS = [
   { label: 'MP4 (default)',      mime: 'video/mp4',                        ext: 'mp4'  },
 ];
 
-export function getSupportedCodecs() {
+export function getSupportedCodecs(): CodecOption[] {
   if (typeof MediaRecorder === 'undefined') return [];
   return CODECS.filter(c => {
     try { return MediaRecorder.isTypeSupported(c.mime); } catch { return false; }

@@ -1,5 +1,25 @@
-import { Toggle }  from './Toggle.jsx';
-import { Section } from './Section.jsx';
+import { Toggle }  from './Toggle';
+import { Section } from './Section';
+import { RecState, CodecOption } from '../types';
+
+interface ControlPanelProps {
+  captureScreen: boolean;    onCaptureScreen: (v: boolean) => void;
+  captureSysAudio: boolean;  onCaptureSysAudio: (v: boolean) => void;
+  captureCamera: boolean;    onCaptureCamera: (v: boolean) => void;
+  captureMic: boolean;       onCaptureMic: (v: boolean) => void;
+  cameras: MediaDeviceInfo[]; cameraDeviceId: string; onCameraDeviceId: (v: string) => void;
+  mics: MediaDeviceInfo[];    micDeviceId: string;    onMicDeviceId: (v: string) => void;
+  supportedCodecs: CodecOption[]; codecIndex: number; onCodecIndex: (v: number) => void;
+  resolution: string;  onResolution: (v: string) => void;
+  fps: number;         onFps: (v: number) => void;
+  videoBitrate: number;  onVideoBitrate: (v: number) => void;
+  audioBitrate: number;  onAudioBitrate: (v: number) => void;
+  recState: RecState;
+  opfsAvailable: boolean;
+  onStart: () => void;
+  onPause: () => void;
+  onStop: () => void;
+}
 
 export function ControlPanel({
   // Sources
@@ -18,7 +38,7 @@ export function ControlPanel({
   // Recording
   recState, opfsAvailable,
   onStart, onPause, onStop,
-}) {
+}: ControlPanelProps) {
   const idle     = recState === 'idle';
   const busy     = !idle;
 

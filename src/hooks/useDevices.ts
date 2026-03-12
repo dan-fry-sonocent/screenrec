@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
-export function useDevices() {
-  const [cameras, setCameras] = useState([]);
-  const [mics, setMics]       = useState([]);
+export function useDevices(): { cameras: MediaDeviceInfo[]; mics: MediaDeviceInfo[] } {
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [mics, setMics]       = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
     async function enumerate() {

@@ -1,7 +1,21 @@
 import { useState } from 'react';
-import { fmtBytes, fmtDate } from '../utils/format.js';
+import { fmtBytes, fmtDate } from '../utils/format';
+import { RecordingEntry } from '../types';
 
-export function RecordingsList({ recordings, onPlay, onDownload, onDelete }) {
+interface RecordingsListProps {
+  recordings: RecordingEntry[];
+  onPlay: (handle: FileSystemFileHandle) => void;
+  onDownload: (handle: FileSystemFileHandle, name: string) => void;
+  onDelete: (name: string) => void;
+}
+
+interface RecordingItemProps extends RecordingsListProps {
+  name: string;
+  handle: FileSystemFileHandle;
+  file: File;
+}
+
+export function RecordingsList({ recordings, onPlay, onDownload, onDelete }: RecordingsListProps) {
   if (recordings.length === 0) {
     return (
       <span style={{ color: 'var(--text-dim)', fontSize: '13px' }}>
@@ -18,6 +32,7 @@ export function RecordingsList({ recordings, onPlay, onDownload, onDelete }) {
           name={name}
           handle={handle}
           file={file}
+          recordings={recordings}
           onPlay={onPlay}
           onDownload={onDownload}
           onDelete={onDelete}
@@ -27,7 +42,7 @@ export function RecordingsList({ recordings, onPlay, onDownload, onDelete }) {
   );
 }
 
-function RecordingItem({ name, handle, file, onPlay, onDownload, onDelete }) {
+function RecordingItem({ name, handle, file, onPlay, onDownload, onDelete }: RecordingItemProps) {
   const [confirming, setConfirming] = useState(false);
 
   function handleDeleteClick() {

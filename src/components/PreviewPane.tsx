@@ -1,5 +1,22 @@
-import { fmtBytes, fmtElapsed } from '../utils/format.js';
-import { RecordingsList }       from './RecordingsList.jsx';
+import { RefObject } from 'react';
+import { fmtBytes, fmtElapsed } from '../utils/format';
+import { RecordingsList }       from './RecordingsList';
+import { RecState, RecordingEntry } from '../types';
+
+interface PreviewPaneProps {
+  videoRef: RefObject<HTMLVideoElement | null>;
+  recState: RecState;
+  elapsed: number;
+  opfsAvailable: boolean;
+  bytesWritten: number;
+  currentRes: string | null;
+  currentCodec: string | null;
+  recordings: RecordingEntry[];
+  onPlay: (handle: FileSystemFileHandle) => void;
+  onDownload: (handle: FileSystemFileHandle, name: string) => void;
+  onDelete: (name: string) => void;
+  showPlaceholder: boolean;
+}
 
 export function PreviewPane({
   videoRef,
@@ -14,7 +31,7 @@ export function PreviewPane({
   onDownload,
   onDelete,
   showPlaceholder,
-}) {
+}: PreviewPaneProps) {
   const isRecording = recState === 'recording' || recState === 'paused';
 
   return (

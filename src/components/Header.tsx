@@ -1,4 +1,10 @@
-const STATUS_LABELS = {
+import { RecState } from '../types';
+
+interface HeaderProps {
+  recState: RecState;
+}
+
+const STATUS_LABELS: Record<RecState, string> = {
   idle:       'Idle',
   acquiring:  'Ready',
   recording:  'Recording',
@@ -6,7 +12,7 @@ const STATUS_LABELS = {
   saving:     'Saving\u2026',
 };
 
-export function Header({ recState }) {
+export function Header({ recState }: HeaderProps) {
   return (
     <header>
       <h1>Screen<span>Rec</span></h1>

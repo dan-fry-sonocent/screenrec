@@ -1,4 +1,12 @@
-export function Toggle({ label, sublabel, checked, onChange, disabled }) {
+interface ToggleProps {
+  label: string;
+  sublabel?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}
+
+export function Toggle({ label, sublabel, checked, onChange, disabled }: ToggleProps) {
   return (
     <div className="toggle-row">
       <div>

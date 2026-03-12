@@ -1,9 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
+import { RecordingEntry } from '../types';
 
-export function useOPFS() {
-  const [opfsRoot,    setOpfsRoot]    = useState(null);
+export function useOPFS(): {
+  opfsRoot: FileSystemDirectoryHandle | null;
+  available: boolean;
+  recordings: RecordingEntry[];
+  refresh: () => Promise<void>;
+} {
+  const [opfsRoot,    setOpfsRoot]    = useState<FileSystemDirectoryHandle | null>(null);
   const [available,   setAvailable]   = useState(false);
-  const [recordings,  setRecordings]  = useState([]);
+  const [recordings,  setRecordings]  = useState<RecordingEntry[]>([]);
 
   useEffect(() => {
     navigator.storage.getDirectory()
@@ -13,13 +19,14 @@ export function useOPFS() {
 
   const refresh = useCallback(async () => {
     if (!opfsRoot) return;
-    const items = [];
+    const items: RecordingEntry[] = [];
     try {
       for await (const [name, handle] of opfsRoot.entries()) {
         if (handle.kind === 'file') {
           try {
-            const file = await handle.getFile();
-            items.push({ name, handle, file });
+            const fileHandle = handle as FileSystemFileHandle;
+            const file = await fileHandle.getFile();
+            items.push({ name, handle: fileHandle, file });
           } catch {}
         }
       }
