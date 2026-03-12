@@ -1,7 +1,17 @@
 version: '3'
 
 tasks:
-  serve:
-    desc: Start a local web server for ScreenRec
+  dev:
+    desc: Start the Vite development server
     cmds:
-      - python3 -m http.server 8080 --directory public
+      - npm run dev
+
+  build:
+    desc: Build for production (output to dist/)
+    cmds:
+      - npm run build
+
+  preview:
+    desc: Preview the production build locally
+    cmds:
+      - npm run preview
