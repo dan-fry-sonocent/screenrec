@@ -898,6 +898,7 @@ function cleanup() {
   if (audioCtx)       { audioCtx.close().catch(() => {}); audioCtx = null; }
   if (combinedStream) { combinedStream.getTracks().forEach(t => t.stop()); combinedStream = null; }
   ui.preview.srcObject = null;
+  ui.preview.muted = true;
   ui.placeholder.style.display = 'flex';
   mediaRecorder = null;
 }
@@ -955,6 +956,7 @@ async function refreshRecordingsList() {
       const f = await handle.getFile();
       const url = URL.createObjectURL(f);
       ui.preview.srcObject = null;
+      ui.preview.muted = false;
       ui.preview.src = url;
       ui.placeholder.style.display = 'none';
       ui.preview.play();
