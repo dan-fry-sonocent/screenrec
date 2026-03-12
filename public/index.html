@@ -27,7 +27,8 @@
       background: var(--bg);
       color: var(--text);
       font-size: 14px;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
@@ -68,6 +69,8 @@
       grid-template-columns: 320px 1fr;
       gap: 0;
       flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .panel {
@@ -81,6 +84,8 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      min-height: 0;
+      overflow: hidden;
     }
 
     /* ── Section card ── */
@@ -197,7 +202,8 @@
       border-radius: var(--radius);
       border: 1px solid var(--border);
       overflow: hidden;
-      aspect-ratio: 16/9;
+      flex: 1;
+      min-height: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -272,10 +278,13 @@
 
     /* ── Recordings list ── */
     #recordings-section {
-      padding: 16px 20px;
+      padding: 12px 0 0;
       border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      max-height: 30vh;
+      overflow-y: auto;
     }
-    #recordings-section h2 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-dim); letter-spacing: .5px; text-transform: uppercase; }
+    #recordings-section h2 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-dim); letter-spacing: .5px; text-transform: uppercase; padding: 0 2px; }
     #recordings-list { display: flex; flex-direction: column; gap: 8px; }
     .recording-item {
       display: flex;
@@ -480,14 +489,14 @@
       <div class="info-chip">Size: <strong id="chip-size">—</strong></div>
     </div>
 
+    <!-- ── Recordings list ── -->
+    <div id="recordings-section">
+      <h2>Saved Recordings</h2>
+      <div id="recordings-list"><span style="color:var(--text-dim);font-size:13px">No recordings yet.</span></div>
+    </div>
+
   </div>
 </main>
-
-<!-- ── Recordings list ── -->
-<div id="recordings-section">
-  <h2>Saved Recordings</h2>
-  <div id="recordings-list"><span style="color:var(--text-dim);font-size:13px">No recordings yet.</span></div>
-</div>
 
 <script>
 'use strict';
