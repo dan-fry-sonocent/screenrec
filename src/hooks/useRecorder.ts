@@ -128,7 +128,10 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
       if (captureScreen) {
         const ss = await navigator.mediaDevices.getDisplayMedia({
           video: videoConstraints,
-          audio: captureSysAudio,
+          // Disable all browser audio processing so system audio is captured flat.
+          audio: captureSysAudio
+            ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+            : false,
         });
         screenStreamRef.current = ss;
         ss.getVideoTracks().forEach(t => tracks.push(t));
