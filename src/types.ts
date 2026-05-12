@@ -1,4 +1,4 @@
-export type RecState = 'idle' | 'acquiring' | 'recording' | 'paused' | 'saving';
+export type RecState = 'idle' | 'acquiring' | 'preview' | 'recording' | 'paused' | 'saving';
 
 export interface CodecOption {
   label: string;

@@ -6,7 +6,8 @@ interface HeaderProps {
 
 const STATUS_LABELS: Record<RecState, string> = {
   idle:       'Idle',
-  acquiring:  'Ready',
+  acquiring:  'Acquiring\u2026',
+  preview:    'Preview',
   recording:  'Recording',
   paused:     'Paused',
   saving:     'Saving\u2026',

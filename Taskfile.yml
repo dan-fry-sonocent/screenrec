@@ -1,6 +1,11 @@
 version: '3'
 
 tasks:
+  install:
+    desc: Install npm dependencies
+    cmds:
+      - npm install
+
   dev:
     desc: Start the Vite development server
     cmds:
@@ -15,3 +20,8 @@ tasks:
     desc: Preview the production build locally
     cmds:
       - npm run preview
+
+  typecheck:
+    desc: Run the TypeScript compiler in no-emit mode
+    cmds:
+      - npx tsc --noEmit

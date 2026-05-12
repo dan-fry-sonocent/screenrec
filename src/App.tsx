@@ -39,7 +39,7 @@ export default function App() {
 
   const {
     recState, liveStream, elapsed, bytesWritten, currentRes, currentCodec,
-    start, stop, pause,
+    startPreview, stopPreview, startRecording, stopRecording, pauseRecording,
   } = useRecorder({ opfsRoot, opfsAvailable, onSaved: refreshRecordings });
 
   // ── Sync video element with live stream or playback URL ──────────────────
@@ -91,27 +91,49 @@ export default function App() {
   }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleStart = useCallback(() => {
-    // Clear any active playback before starting a new recording.
+  const clearPlayback = useCallback(() => {
     if (playbackUrlRef.current) {
       URL.revokeObjectURL(playbackUrlRef.current);
       playbackUrlRef.current = null;
       setPlaybackSrc(null);
     }
-    start({
+  }, []);
+
+  const handleStartPreview = useCallback(() => {
+    clearPlayback();
+    return startPreview({
       captureScreen, captureSysAudio, captureCamera, captureMic,
       cameraDeviceId, micDeviceId,
       videoConstraints: buildVideoConstraints(),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    startPreview, clearPlayback,
+    captureScreen, captureSysAudio, captureCamera, captureMic,
+    cameraDeviceId, micDeviceId, resolution, fps,
+  ]);
+
+  const handleStartRecording = useCallback(async () => {
+    clearPlayback();
+    if (recState === 'idle') {
+      const ok = await startPreview({
+        captureScreen, captureSysAudio, captureCamera, captureMic,
+        cameraDeviceId, micDeviceId,
+        videoConstraints: buildVideoConstraints(),
+      });
+      if (!ok) return;
+    }
+    startRecording({
       selectedCodec: supportedCodecs[codecIndex],
       videoBps: videoBitrate * 1_000_000,
       audioBps: audioBitrate,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    start,
+    startPreview, startRecording, clearPlayback, recState,
     captureScreen, captureSysAudio, captureCamera, captureMic,
-    cameraDeviceId, micDeviceId,
-    resolution, fps, supportedCodecs, codecIndex, videoBitrate, audioBitrate,
+    cameraDeviceId, micDeviceId, resolution, fps,
+    supportedCodecs, codecIndex, videoBitrate, audioBitrate,
   ]);
 
   const handlePlay = useCallback(async (handle: FileSystemFileHandle) => {
@@ -161,9 +183,11 @@ export default function App() {
           audioBitrate={audioBitrate}       onAudioBitrate={setAudioBitrate}
           recState={recState}
           opfsAvailable={opfsAvailable}
-          onStart={handleStart}
-          onPause={pause}
-          onStop={stop}
+          onStartPreview={handleStartPreview}
+          onStopPreview={stopPreview}
+          onStartRecording={handleStartRecording}
+          onStopRecording={stopRecording}
+          onPause={pauseRecording}
         />
         <PreviewPane
           videoRef={videoRef}

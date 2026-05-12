@@ -64,6 +64,9 @@ header h1 span { color: var(--accent); }
 }
 .status-dot.recording { background: var(--danger); animation: blink 1s infinite; }
 .status-dot.paused    { background: var(--warn); }
+.status-dot.preview   { background: var(--success); }
+.status-dot.acquiring { background: var(--warn); animation: blink 1s infinite; }
+.status-dot.saving    { background: var(--accent); animation: blink 1s infinite; }
 .status-dot.ready     { background: var(--success); }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 

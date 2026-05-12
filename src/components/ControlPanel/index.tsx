@@ -20,9 +20,11 @@ export interface ControlPanelProps {
   // Recording
   recState: RecState;
   opfsAvailable: boolean;
-  onStart: () => void;
-  onPause: () => void;
-  onStop:  () => void;
+  onStartPreview:   () => void;
+  onStopPreview:    () => void;
+  onStartRecording: () => void;
+  onStopRecording:  () => void;
+  onPause:          () => void;
 }
 
 export function ControlPanel({
@@ -33,7 +35,8 @@ export function ControlPanel({
   supportedCodecs, codecIndex, onCodecIndex,
   resolution, onResolution, fps, onFps,
   videoBitrate, onVideoBitrate, audioBitrate, onAudioBitrate,
-  recState, opfsAvailable, onStart, onPause, onStop,
+  recState, opfsAvailable,
+  onStartPreview, onStopPreview, onStartRecording, onStopRecording, onPause,
 }: ControlPanelProps) {
   const busy = recState !== 'idle';
 
@@ -59,9 +62,11 @@ export function ControlPanel({
       <RecordingSection
         recState={recState}
         opfsAvailable={opfsAvailable}
-        onStart={onStart}
+        onStartPreview={onStartPreview}
+        onStopPreview={onStopPreview}
+        onStartRecording={onStartRecording}
+        onStopRecording={onStopRecording}
         onPause={onPause}
-        onStop={onStop}
       />
     </div>
   );
