@@ -6,7 +6,7 @@ import { useRecorder }        from './hooks/useRecorder';
 import { Header }             from './components/Header';
 import { ControlPanel }       from './components/ControlPanel';
 import { PreviewPane }        from './components/PreviewPane';
-import { CropRect }           from './types';
+import { CropRect, CensorRect, EditMode } from './types';
 
 export default function App() {
   const videoRef       = useRef<HTMLVideoElement>(null);
@@ -32,6 +32,25 @@ export default function App() {
 
   // ── Crop region ──────────────────────────────────────────────────────────
   const [cropRect, setCropRect] = useState<CropRect | null>(null);
+
+  // ── Edit mode / censors ──────────────────────────────────────────────────
+  const [editMode,         setEditMode]         = useState<EditMode>('crop');
+  const [censorRects,      setCensorRects]      = useState<CensorRect[]>([]);
+  const [selectedCensorId, setSelectedCensorId] = useState<string | null>(null);
+  const [censorColor,      setCensorColor]      = useState<string>('#000000');
+
+  const handleAddCensor = useCallback((rect: CensorRect) => {
+    setCensorRects(rs => [...rs, rect]);
+  }, []);
+
+  const handleUpdateCensor = useCallback((id: string, patch: Partial<CensorRect>) => {
+    setCensorRects(rs => rs.map(r => (r.id === id ? { ...r, ...patch } : r)));
+  }, []);
+
+  const handleDeleteCensor = useCallback((id: string) => {
+    setCensorRects(rs => rs.filter(r => r.id !== id));
+    setSelectedCensorId(curr => (curr === id ? null : curr));
+  }, []);
 
   // ── Playback state ───────────────────────────────────────────────────────
   const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
@@ -132,6 +151,7 @@ export default function App() {
       videoBps: videoBitrate * 1_000_000,
       audioBps: audioBitrate,
       cropRect,
+      censorRects,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -139,7 +159,7 @@ export default function App() {
     captureScreen, captureSysAudio, captureCamera, captureMic,
     cameraDeviceId, micDeviceId, resolution, fps,
     supportedCodecs, codecIndex, videoBitrate, audioBitrate,
-    cropRect,
+    cropRect, censorRects,
   ]);
 
   const handlePlay = useCallback(async (handle: FileSystemFileHandle) => {
@@ -210,6 +230,16 @@ export default function App() {
           showPlaceholder={showPlaceholder}
           cropRect={cropRect}
           onCropChange={setCropRect}
+          editMode={editMode}
+          onEditModeChange={setEditMode}
+          censorRects={censorRects}
+          onAddCensor={handleAddCensor}
+          onUpdateCensor={handleUpdateCensor}
+          onDeleteCensor={handleDeleteCensor}
+          selectedCensorId={selectedCensorId}
+          onSelectCensor={setSelectedCensorId}
+          censorColor={censorColor}
+          onCensorColorChange={setCensorColor}
         />
       </main>
     </>

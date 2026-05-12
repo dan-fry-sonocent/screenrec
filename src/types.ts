@@ -19,3 +19,16 @@ export interface CropRect {
   width: number;
   height: number;
 }
+
+// Filled redaction rectangle drawn over the recorded video.
+// Coordinates are normalized 0..1 against the source frame, matching CropRect.
+export interface CensorRect {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+}
+
+export type EditMode = 'crop' | 'censor';

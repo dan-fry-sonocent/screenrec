@@ -2,7 +2,10 @@ import { RefObject } from 'react';
 import { fmtBytes, fmtElapsed } from '../utils/format';
 import { RecordingsList }       from './RecordingsList';
 import { CropOverlay }           from './CropOverlay';
-import { RecState, RecordingEntry, CropRect } from '../types';
+import { CensorLayer }           from './CensorLayer';
+import { RecState, RecordingEntry, CropRect, CensorRect, EditMode } from '../types';
+
+const CENSOR_PRESETS = ['#000000', '#ffffff', '#e15252', '#888888'];
 
 interface PreviewPaneProps {
   videoRef: RefObject<HTMLVideoElement>;
@@ -17,8 +20,21 @@ interface PreviewPaneProps {
   onDownload: (handle: FileSystemFileHandle, name: string) => void;
   onDelete: (name: string) => void;
   showPlaceholder: boolean;
+  // Crop
   cropRect: CropRect | null;
   onCropChange: (rect: CropRect | null) => void;
+  // Editing
+  editMode: EditMode;
+  onEditModeChange: (mode: EditMode) => void;
+  // Censor
+  censorRects: CensorRect[];
+  onAddCensor: (rect: CensorRect) => void;
+  onUpdateCensor: (id: string, patch: Partial<CensorRect>) => void;
+  onDeleteCensor: (id: string) => void;
+  selectedCensorId: string | null;
+  onSelectCensor: (id: string | null) => void;
+  censorColor: string;
+  onCensorColorChange: (color: string) => void;
 }
 
 export function PreviewPane({
@@ -36,13 +52,24 @@ export function PreviewPane({
   showPlaceholder,
   cropRect,
   onCropChange,
+  editMode,
+  onEditModeChange,
+  censorRects,
+  onAddCensor,
+  onUpdateCensor,
+  onDeleteCensor,
+  selectedCensorId,
+  onSelectCensor,
+  censorColor,
+  onCensorColorChange,
 }: PreviewPaneProps) {
-  const isRecording = recState === 'recording' || recState === 'paused';
-  const showCropOverlay = recState === 'preview' || isRecording;
-  const cropEditable    = recState === 'preview';
+  const isRecording      = recState === 'recording' || recState === 'paused';
+  const overlaysVisible  = recState === 'preview' || isRecording;
+  const canEdit          = recState === 'preview';
+  const cropEditable     = canEdit && editMode === 'crop';
+  const censorEditable   = canEdit && editMode === 'censor';
 
-  // Render the crop region's pixel size (computed against the source track's
-  // intrinsic resolution, parsed from currentRes "WxH").
+  // Render the crop region's pixel size from currentRes "WxH".
   let cropLabel: string | null = null;
   if (cropRect && currentRes) {
     const m = currentRes.match(/(\d+)\D+(\d+)/);
@@ -55,6 +82,68 @@ export function PreviewPane({
 
   return (
     <div className="preview-area">
+
+      {canEdit && (
+        <div className="preview-toolbar">
+          <div className="mode-pills" role="tablist" aria-label="Edit mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={editMode === 'crop'}
+              className={`mode-pill${editMode === 'crop' ? ' active' : ''}`}
+              onClick={() => onEditModeChange('crop')}
+            >
+              Crop
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={editMode === 'censor'}
+              className={`mode-pill${editMode === 'censor' ? ' active' : ''}`}
+              onClick={() => onEditModeChange('censor')}
+            >
+              Censor
+            </button>
+          </div>
+
+          {editMode === 'censor' && (
+            <div className="censor-controls">
+              <span className="censor-controls-label">Color:</span>
+              {CENSOR_PRESETS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={`Set color ${c}`}
+                  className={`color-swatch${c.toLowerCase() === censorColor.toLowerCase() ? ' selected' : ''}`}
+                  style={{ backgroundColor: c }}
+                  onClick={() => {
+                    onCensorColorChange(c);
+                    if (selectedCensorId) onUpdateCensor(selectedCensorId, { color: c });
+                  }}
+                />
+              ))}
+              <label className="color-swatch custom" aria-label="Custom color">
+                <input
+                  type="color"
+                  value={censorColor}
+                  onChange={e => {
+                    onCensorColorChange(e.target.value);
+                    if (selectedCensorId) onUpdateCensor(selectedCensorId, { color: e.target.value });
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={!selectedCensorId}
+                onClick={() => { if (selectedCensorId) onDeleteCensor(selectedCensorId); }}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="preview-wrap">
         {/* The video element is controlled imperatively via videoRef in App. */}
@@ -76,12 +165,25 @@ export function PreviewPane({
           </div>
         )}
 
-        {showCropOverlay && (
+        {overlaysVisible && (
           <CropOverlay
             videoRef={videoRef}
             cropRect={cropRect}
             editable={cropEditable}
             onCropChange={onCropChange}
+          />
+        )}
+
+        {overlaysVisible && (
+          <CensorLayer
+            videoRef={videoRef}
+            rects={censorRects}
+            selectedId={selectedCensorId}
+            editable={censorEditable}
+            newColor={censorColor}
+            onAdd={onAddCensor}
+            onUpdate={onUpdateCensor}
+            onSelect={onSelectCensor}
           />
         )}
 
@@ -126,9 +228,19 @@ export function PreviewPane({
             )}
           </div>
         )}
-        {recState === 'preview' && !cropRect && (
+        {recState === 'preview' && !cropRect && editMode === 'crop' && (
           <div className="info-chip region-hint">
             Drag on the preview to crop
+          </div>
+        )}
+        {recState === 'preview' && editMode === 'censor' && censorRects.length === 0 && (
+          <div className="info-chip region-hint">
+            Drag on the preview to add a censor box
+          </div>
+        )}
+        {censorRects.length > 0 && (
+          <div className="info-chip">
+            Censors: <strong>{censorRects.length}</strong>
           </div>
         )}
       </div>

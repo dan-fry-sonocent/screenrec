@@ -269,10 +269,34 @@ input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
   animation: blink 1s infinite;
 }
 
-/* Stack: video < crop overlay < HUD chips */
+/* Stack: video < crop overlay < censor layer < HUD chips */
 .preview-video    { position: relative; z-index: 0; }
-.crop-layer       { position: absolute; inset: 0; z-index: 1; touch-action: none; }
-.crop-layer.editable { cursor: crosshair; }
+.crop-layer       { position: absolute; inset: 0; z-index: 1; touch-action: none; pointer-events: none; }
+.crop-layer.editable { cursor: crosshair; pointer-events: auto; }
+.censor-layer     { position: absolute; inset: 0; z-index: 2; touch-action: none; pointer-events: none; }
+.censor-layer.editable { cursor: crosshair; pointer-events: auto; }
+.censor-rect {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.censor-layer.editable .censor-rect       { pointer-events: auto; cursor: move; }
+.censor-layer.editable .censor-rect.drawing { pointer-events: none; }
+.censor-rect.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+.censor-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  border-radius: 2px;
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+.censor-handle.nw { top: -6px;    left: -6px;   cursor: nwse-resize; }
+.censor-handle.ne { top: -6px;    right: -6px;  cursor: nesw-resize; }
+.censor-handle.sw { bottom: -6px; left: -6px;   cursor: nesw-resize; }
+.censor-handle.se { bottom: -6px; right: -6px;  cursor: nwse-resize; }
 .crop-rect {
   position: absolute;
   border: 2px solid var(--accent);
@@ -283,6 +307,69 @@ input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
 .crop-rect.drawing { border-style: dashed; }
 .timer-overlay,
 .rec-indicator    { z-index: 2; }
+
+/* ── Preview toolbar (edit mode + censor controls) ── */
+.preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.mode-pills {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+}
+.mode-pill {
+  background: transparent;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.mode-pill.active { background: var(--accent); color: #fff; }
+.mode-pill:hover:not(.active) { color: var(--text); }
+
+.censor-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.censor-controls-label {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.color-swatch.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg); outline: 2px solid var(--accent); }
+.color-swatch.custom {
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  position: relative;
+  overflow: hidden;
+}
+.color-swatch.custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+}
 
 /* ── Info bar ── */
 .info-bar {
