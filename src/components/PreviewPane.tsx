@@ -1,7 +1,8 @@
 import { RefObject } from 'react';
 import { fmtBytes, fmtElapsed } from '../utils/format';
 import { RecordingsList }       from './RecordingsList';
-import { RecState, RecordingEntry } from '../types';
+import { CropOverlay }           from './CropOverlay';
+import { RecState, RecordingEntry, CropRect } from '../types';
 
 interface PreviewPaneProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -16,6 +17,8 @@ interface PreviewPaneProps {
   onDownload: (handle: FileSystemFileHandle, name: string) => void;
   onDelete: (name: string) => void;
   showPlaceholder: boolean;
+  cropRect: CropRect | null;
+  onCropChange: (rect: CropRect | null) => void;
 }
 
 export function PreviewPane({
@@ -31,8 +34,24 @@ export function PreviewPane({
   onDownload,
   onDelete,
   showPlaceholder,
+  cropRect,
+  onCropChange,
 }: PreviewPaneProps) {
   const isRecording = recState === 'recording' || recState === 'paused';
+  const showCropOverlay = recState === 'preview' || isRecording;
+  const cropEditable    = recState === 'preview';
+
+  // Render the crop region's pixel size (computed against the source track's
+  // intrinsic resolution, parsed from currentRes "WxH").
+  let cropLabel: string | null = null;
+  if (cropRect && currentRes) {
+    const m = currentRes.match(/(\d+)\D+(\d+)/);
+    if (m) {
+      const srcW = Number(m[1]);
+      const srcH = Number(m[2]);
+      cropLabel = `${Math.round(cropRect.width * srcW)}×${Math.round(cropRect.height * srcH)}`;
+    }
+  }
 
   return (
     <div className="preview-area">
@@ -55,6 +74,15 @@ export function PreviewPane({
             </svg>
             <span>Preview will appear here</span>
           </div>
+        )}
+
+        {showCropOverlay && (
+          <CropOverlay
+            videoRef={videoRef}
+            cropRect={cropRect}
+            editable={cropEditable}
+            onCropChange={onCropChange}
+          />
         )}
 
         {isRecording && (
@@ -83,6 +111,26 @@ export function PreviewPane({
         <div className="info-chip">
           Size: <strong>{bytesWritten > 0 ? fmtBytes(bytesWritten) : '—'}</strong>
         </div>
+        {cropRect && (
+          <div className="info-chip region-chip">
+            Region: <strong>{cropLabel ?? 'cropped'}</strong>
+            {cropEditable && (
+              <button
+                type="button"
+                className="region-clear"
+                aria-label="Clear crop region"
+                onClick={() => onCropChange(null)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
+        {recState === 'preview' && !cropRect && (
+          <div className="info-chip region-hint">
+            Drag on the preview to crop
+          </div>
+        )}
       </div>
 
       <div className="recordings-section">

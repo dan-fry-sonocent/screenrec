@@ -6,6 +6,7 @@ import { useRecorder }        from './hooks/useRecorder';
 import { Header }             from './components/Header';
 import { ControlPanel }       from './components/ControlPanel';
 import { PreviewPane }        from './components/PreviewPane';
+import { CropRect }           from './types';
 
 export default function App() {
   const videoRef       = useRef<HTMLVideoElement | null>(null);
@@ -28,6 +29,9 @@ export default function App() {
   const [fps,           setFps]           = useState(30);
   const [videoBitrate,  setVideoBitrate]  = useState(10);     // Mbps
   const [audioBitrate,  setAudioBitrate]  = useState(192000); // bps
+
+  // ── Crop region ──────────────────────────────────────────────────────────
+  const [cropRect, setCropRect] = useState<CropRect | null>(null);
 
   // ── Playback state ───────────────────────────────────────────────────────
   const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
@@ -127,6 +131,7 @@ export default function App() {
       selectedCodec: supportedCodecs[codecIndex],
       videoBps: videoBitrate * 1_000_000,
       audioBps: audioBitrate,
+      cropRect,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -134,6 +139,7 @@ export default function App() {
     captureScreen, captureSysAudio, captureCamera, captureMic,
     cameraDeviceId, micDeviceId, resolution, fps,
     supportedCodecs, codecIndex, videoBitrate, audioBitrate,
+    cropRect,
   ]);
 
   const handlePlay = useCallback(async (handle: FileSystemFileHandle) => {
@@ -202,6 +208,8 @@ export default function App() {
           onDownload={handleDownload}
           onDelete={handleDelete}
           showPlaceholder={showPlaceholder}
+          cropRect={cropRect}
+          onCropChange={setCropRect}
         />
       </main>
     </>

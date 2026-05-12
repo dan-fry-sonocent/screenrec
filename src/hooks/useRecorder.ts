@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { RecState, CodecOption } from '../types';
+import { RecState, CodecOption, CropRect } from '../types';
 
 export interface PreviewSettings {
   captureScreen: boolean;
@@ -15,6 +15,7 @@ export interface RecordSettings {
   selectedCodec: CodecOption | undefined;
   videoBps: number;
   audioBps: number;
+  cropRect: CropRect | null;
 }
 
 interface UseRecorderOptions {
@@ -65,6 +66,17 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
   // preview should fully tear down rather than returning to preview state.
   const endAfterSaveRef   = useRef<boolean>(false);
 
+  // Crop pipeline refs. When the user records with a crop region selected,
+  // the source video is drawn into an offscreen canvas at the cropped pixel
+  // size, and canvas.captureStream() feeds the MediaRecorder.
+  const cropVideoRef    = useRef<HTMLVideoElement | null>(null);
+  const cropCanvasRef   = useRef<HTMLCanvasElement | null>(null);
+  const cropStreamRef   = useRef<MediaStream | null>(null);
+  const cropRafRef      = useRef<number | null>(null);
+  const cropDrawingRef  = useRef<boolean>(false);
+  // Resolution string to restore after a cropped recording ends.
+  const sourceResRef    = useRef<string | null>(null);
+
   // Timer refs.
   const startTimeRef  = useRef<number>(0);
   const pausedMsRef   = useRef<number>(0);
@@ -78,6 +90,23 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
     }, 500);
     return () => clearInterval(id);
   }, [recState]);
+
+  // ── Tear down the crop canvas pipeline ───────────────────────────────────
+  const teardownCropPipeline = useCallback(() => {
+    cropDrawingRef.current = false;
+    if (cropRafRef.current != null) {
+      cancelAnimationFrame(cropRafRef.current);
+      cropRafRef.current = null;
+    }
+    cropStreamRef.current?.getTracks().forEach(t => t.stop());
+    cropStreamRef.current = null;
+    if (cropVideoRef.current) {
+      try { cropVideoRef.current.pause(); } catch { /* ignore */ }
+      cropVideoRef.current.srcObject = null;
+      cropVideoRef.current = null;
+    }
+    cropCanvasRef.current = null;
+  }, []);
 
   // ── Tear down all media streams ──────────────────────────────────────────
   const teardownStreams = useCallback(() => {
@@ -97,6 +126,9 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
   useEffect(() => {
     return () => {
       mediaRecorderRef.current = null;
+      cropDrawingRef.current = false;
+      if (cropRafRef.current != null) cancelAnimationFrame(cropRafRef.current);
+      cropStreamRef.current?.getTracks().forEach(t => t.stop());
       [screenStreamRef, cameraStreamRef, micStreamRef, combinedStreamRef].forEach(r => {
         r.current?.getTracks().forEach(t => t.stop());
         r.current = null;
@@ -219,6 +251,75 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
     setCurrentCodec(null);
   }, [teardownStreams]);
 
+  // ── setupCropPipeline ────────────────────────────────────────────────────
+  // Build a MediaStream whose video track is a cropped rendering of the
+  // source video, leaving audio tracks pass-through. Returns the new stream
+  // and the cropped pixel dimensions for display.
+  const setupCropPipeline = useCallback(async (
+    source: MediaStream,
+    crop: CropRect,
+  ): Promise<{ stream: MediaStream; width: number; height: number }> => {
+    const sourceVideoTrack = source.getVideoTracks()[0];
+    if (!sourceVideoTrack) throw new Error('No video track to crop.');
+    const settings = sourceVideoTrack.getSettings();
+    const srcW = settings.width;
+    const srcH = settings.height;
+    if (!srcW || !srcH) {
+      throw new Error('Source video dimensions are not available.');
+    }
+    const sx = Math.max(0, Math.min(srcW - 2, Math.round(crop.x * srcW)));
+    const sy = Math.max(0, Math.min(srcH - 2, Math.round(crop.y * srcH)));
+    const sw = Math.max(2, Math.min(srcW - sx, Math.round(crop.width  * srcW)));
+    const sh = Math.max(2, Math.min(srcH - sy, Math.round(crop.height * srcH)));
+
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.srcObject = new MediaStream([sourceVideoTrack]);
+    await v.play().catch(() => { /* ignore — video will still produce frames */ });
+    cropVideoRef.current = v;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('2D canvas context unavailable.');
+    cropCanvasRef.current = canvas;
+
+    const fps = settings.frameRate ?? 30;
+    cropDrawingRef.current = true;
+
+    const hasRVFC = typeof (v as unknown as { requestVideoFrameCallback?: unknown })
+      .requestVideoFrameCallback === 'function';
+
+    if (hasRVFC) {
+      const draw = () => {
+        if (!cropDrawingRef.current) return;
+        ctx.drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh);
+        (v as unknown as { requestVideoFrameCallback: (cb: () => void) => void })
+          .requestVideoFrameCallback(draw);
+      };
+      (v as unknown as { requestVideoFrameCallback: (cb: () => void) => void })
+        .requestVideoFrameCallback(draw);
+    } else {
+      const draw = () => {
+        if (!cropDrawingRef.current) return;
+        ctx.drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh);
+        cropRafRef.current = requestAnimationFrame(draw);
+      };
+      draw();
+    }
+
+    const captured = canvas.captureStream(fps);
+    cropStreamRef.current = captured;
+
+    const recStream = new MediaStream([
+      captured.getVideoTracks()[0],
+      ...source.getAudioTracks(),
+    ]);
+    return { stream: recStream, width: sw, height: sh };
+  }, []);
+
   // ── startRecording ───────────────────────────────────────────────────────
   // Requires preview to be active (combinedStreamRef populated).
   const startRecording = useCallback(async (settings: RecordSettings) => {
@@ -231,7 +332,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
       return;
     }
 
-    const { selectedCodec, videoBps, audioBps } = settings;
+    const { selectedCodec, videoBps, audioBps, cropRect } = settings;
     const { opfsAvailable, opfsRoot } = propsRef.current;
 
     const ext  = selectedCodec?.ext  ?? 'webm';
@@ -257,14 +358,39 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
     setElapsed(0);
     setCurrentCodec(selectedCodec?.label?.split(' ')[0] ?? 'default');
 
+    // Build the stream we'll feed to MediaRecorder — either the raw combined
+    // stream or a cropped derivative.
+    let recordStream: MediaStream = combined;
+    if (cropRect) {
+      try {
+        const pipeline = await setupCropPipeline(combined, cropRect);
+        recordStream = pipeline.stream;
+        sourceResRef.current = currentRes;
+        setCurrentRes(`${pipeline.width}×${pipeline.height}`);
+      } catch (err) {
+        alert('Could not set up crop:\n' + (err as Error).message);
+        teardownCropPipeline();
+        if (opfsWritableRef.current) {
+          await opfsWritableRef.current.close().catch(() => {});
+          opfsWritableRef.current = null;
+        }
+        return;
+      }
+    }
+
     const recOpts: MediaRecorderOptions = { videoBitsPerSecond: videoBps, audioBitsPerSecond: audioBps };
     if (mime) recOpts.mimeType = mime;
 
     let mr: MediaRecorder;
     try {
-      mr = new MediaRecorder(combined, recOpts);
+      mr = new MediaRecorder(recordStream, recOpts);
     } catch (err) {
       alert('Could not start recording:\n' + (err as Error).message);
+      teardownCropPipeline();
+      if (sourceResRef.current) {
+        setCurrentRes(sourceResRef.current);
+        sourceResRef.current = null;
+      }
       if (opfsWritableRef.current) {
         await opfsWritableRef.current.close().catch(() => {});
         opfsWritableRef.current = null;
@@ -312,6 +438,11 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
       } finally {
         mediaRecorderRef.current = null;
         setElapsed(0);
+        teardownCropPipeline();
+        if (sourceResRef.current) {
+          setCurrentRes(sourceResRef.current);
+          sourceResRef.current = null;
+        }
         if (endAfterSaveRef.current) {
           endAfterSaveRef.current = false;
           teardownStreams();
@@ -333,7 +464,7 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
     pausedMsRef.current  = 0;
     mr.start(1000); // 1-second timeslices
     setRecState('recording');
-  }, [teardownStreams]);
+  }, [teardownStreams, teardownCropPipeline, setupCropPipeline, currentRes]);
 
   // ── stopRecording ────────────────────────────────────────────────────────
   const stopRecording = useCallback(() => {

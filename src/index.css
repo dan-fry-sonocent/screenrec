@@ -269,6 +269,21 @@ input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
   animation: blink 1s infinite;
 }
 
+/* Stack: video < crop overlay < HUD chips */
+.preview-video    { position: relative; z-index: 0; }
+.crop-layer       { position: absolute; inset: 0; z-index: 1; touch-action: none; }
+.crop-layer.editable { cursor: crosshair; }
+.crop-rect {
+  position: absolute;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.crop-rect.drawing { border-style: dashed; }
+.timer-overlay,
+.rec-indicator    { z-index: 2; }
+
 /* ── Info bar ── */
 .info-bar {
   display: flex;
@@ -285,6 +300,19 @@ input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
   color: var(--text-dim);
 }
 .info-chip strong { color: var(--text); }
+.info-chip.region-chip { display: inline-flex; align-items: center; gap: 6px; }
+.info-chip.region-hint { font-style: italic; opacity: .7; }
+.region-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.region-clear:hover { color: var(--text); background: var(--surface2); }
 
 /* ── Recordings list ── */
 .recordings-section {
