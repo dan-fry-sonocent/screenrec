@@ -9,7 +9,7 @@ import { PreviewPane }        from './components/PreviewPane';
 import { CropRect }           from './types';
 
 export default function App() {
-  const videoRef       = useRef<HTMLVideoElement | null>(null);
+  const videoRef       = useRef<HTMLVideoElement>(null);
   const playbackUrlRef = useRef<string | null>(null);
 
   // ── Source settings ──────────────────────────────────────────────────────

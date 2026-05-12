@@ -5,7 +5,7 @@ import { CropOverlay }           from './CropOverlay';
 import { RecState, RecordingEntry, CropRect } from '../types';
 
 interface PreviewPaneProps {
-  videoRef: RefObject<HTMLVideoElement | null>;
+  videoRef: RefObject<HTMLVideoElement>;
   recState: RecState;
   elapsed: number;
   opfsAvailable: boolean;

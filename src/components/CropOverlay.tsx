@@ -4,7 +4,7 @@ import { CropRect } from '../types';
 interface ContentRect { x: number; y: number; w: number; h: number; }
 
 interface CropOverlayProps {
-  videoRef: RefObject<HTMLVideoElement | null>;
+  videoRef: RefObject<HTMLVideoElement>;
   cropRect: CropRect | null;
   editable: boolean;
   onCropChange: (rect: CropRect | null) => void;

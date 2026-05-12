@@ -289,18 +289,13 @@ export function useRecorder({ opfsRoot, opfsAvailable, onSaved }: UseRecorderOpt
     const fps = settings.frameRate ?? 30;
     cropDrawingRef.current = true;
 
-    const hasRVFC = typeof (v as unknown as { requestVideoFrameCallback?: unknown })
-      .requestVideoFrameCallback === 'function';
-
-    if (hasRVFC) {
+    if (typeof v.requestVideoFrameCallback === 'function') {
       const draw = () => {
         if (!cropDrawingRef.current) return;
         ctx.drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh);
-        (v as unknown as { requestVideoFrameCallback: (cb: () => void) => void })
-          .requestVideoFrameCallback(draw);
+        v.requestVideoFrameCallback!(draw);
       };
-      (v as unknown as { requestVideoFrameCallback: (cb: () => void) => void })
-        .requestVideoFrameCallback(draw);
+      v.requestVideoFrameCallback(draw);
     } else {
       const draw = () => {
         if (!cropDrawingRef.current) return;
